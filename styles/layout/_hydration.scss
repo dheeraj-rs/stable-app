@@ -1,0 +1,149 @@
+// ============================================================================
+// HYDRATION & FLICKERING PREVENTION - Layout Persistence During Reload
+// ============================================================================
+
+// Prevent layout shift during hydration by preserving layout state in CSS
+.layout__wrapper {
+  // Ensure layout doesn't shift during hydration
+  min-height: 100vh;
+  transition: none !important; // Disable transitions during initial load
+  
+  // Prevent flickering by maintaining layout structure
+  &.layout-hydrating {
+    .layout__sidebar,
+    .layout__topbar,
+    .layout__bottombar,
+    .layout__config {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+}
+
+// CSS-based layout state preservation using localStorage values
+// This prevents flickering by applying cached layout state immediately
+.layout__wrapper {
+  // Default static layout
+  &.layout-static {
+    .layout__sidebar {
+      position: fixed;
+      left: 0;
+      top: 5rem;
+      width: 18rem;
+      height: calc(100vh - 5rem);
+      z-index: 997;
+      transition: left 0.2s;
+    }
+    
+    .layout__container {
+      margin-left: 18rem;
+      transition: margin-left 0.2s;
+    }
+    
+    // Inactive desktop sidebar (cached state)
+    &.layout-static-sidebar-inactive {
+      .layout__sidebar {
+        left: -18rem;
+      }
+      
+      .layout__container {
+        margin-left: 0;
+      }
+    }
+  }
+  
+  // Overlay layout for mobile
+  &.layout-overlay {
+    .layout__sidebar {
+      position: fixed;
+      left: -18rem;
+      top: 5rem;
+      width: 18rem;
+      height: calc(100vh - 5rem);
+      z-index: 999;
+      transition: left 0.3s;
+    }
+    
+    .layout__container {
+      margin-left: 0;
+    }
+    
+    // Active overlay sidebar
+    &.layout-overlay-sidebar-active {
+      .layout__sidebar {
+        left: 0;
+      }
+    }
+  }
+}
+
+// Prevent flash of unstyled content (FOUC)
+html {
+  // Hide content until layout is properly initialized
+  &.layout-loading {
+    .layout__wrapper {
+      opacity: 0;
+      transition: opacity 0.1s ease-in-out;
+    }
+  }
+  
+  // Show content after layout is ready
+  &.layout-ready {
+    .layout__wrapper {
+      opacity: 1;
+    }
+  }
+}
+
+// Sticky layout preservation during reload
+.layout__topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: var(--surface-ground);
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.layout__bottombar {
+  position: sticky;
+  bottom: 0;
+  z-index: 1000;
+  background: var(--surface-ground);
+  border-top: 1px solid var(--surface-border);
+  
+  // Hide bottombar if cached preference says so
+  &.layout-bottombar-hidden {
+    display: none;
+  }
+}
+
+// Config sidebar persistence
+.layout__config {
+  position: fixed;
+  right: -25rem;
+  top: 5rem;
+  width: 25rem;
+  height: calc(100vh - 5rem);
+  z-index: 998;
+  transition: right 0.3s;
+  
+  // Active config sidebar (cached state)
+  &.layout-config-active {
+    right: 0;
+  }
+}
+
+// Mobile responsive adjustments
+@media (max-width: 991px) {
+  .layout__wrapper {
+    &.layout-static {
+      .layout__sidebar {
+        left: -18rem; // Always hidden on mobile
+      }
+      
+      .layout__container {
+        margin-left: 0;
+      }
+    }
+  }
+}
