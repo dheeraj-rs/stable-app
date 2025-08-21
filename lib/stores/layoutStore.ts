@@ -1,8 +1,9 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { LayoutConfig, LayoutState } from '@/types';
 
 // Types
-export interface LayoutStore {
+type LayoutStore = {
   layoutConfig: LayoutConfig;
   layoutState: LayoutState;
   activeMenu: string;
@@ -19,7 +20,7 @@ export interface LayoutStore {
   showProfileSidebar: () => void;
   isOverlay: () => boolean;
   isDesktop: () => boolean;
-}
+};
 
 // Default values
 const defaultLayoutConfig: LayoutConfig = {
@@ -52,189 +53,226 @@ const defaultLayoutState: LayoutState = {
   bottombarStickyToggle: true,
 };
 
-// Create the store
-export const useLayoutStore = create<LayoutStore>((set, get) => ({
-  // Initial state
-  layoutConfig: { ...defaultLayoutConfig },
-  layoutState: { ...defaultLayoutState },
-  activeMenu: '',
+// Create the store with persistence
+// Helper to check if we're on the client
+const isClient = typeof window !== 'undefined';
 
-  // State setters
-  setLayoutConfig: (config) =>
-    set((state) => ({
-      layoutConfig: { ...state.layoutConfig, ...config },
-    })),
+export const useLayoutStore = create<LayoutStore>()(
+  persist(
+    (set, get) => ({
+      // Initial state
+      layoutConfig: { ...defaultLayoutConfig },
+      layoutState: { ...defaultLayoutState },
+      activeMenu: '',
 
-  setLayoutState: (newState) =>
-    set((state) => ({
-      layoutState: { ...state.layoutState, ...newState },
-    })),
+      // State setters
+      setLayoutConfig: (config) =>
+        set((state) => ({
+          layoutConfig: { ...state.layoutConfig, ...config },
+        })),
 
-  setActiveMenu: (menu) => set({ activeMenu: menu }),
+      setLayoutState: (newState) =>
+        set((state) => ({
+          layoutState: { ...state.layoutState, ...newState },
+        })),
 
-  // Toggle actions
-  onMenuToggle: () => {
-    const { layoutState, isOverlay, isDesktop } = get();
+      setActiveMenu: (menu) => set({ activeMenu: menu }),
 
-    if (isOverlay()) {
-      set({
-        layoutState: {
-          ...layoutState,
-          overlayMenuActive: !layoutState.overlayMenuActive,
-        },
-      });
-    } else if (isDesktop()) {
-      set({
-        layoutState: {
-          ...layoutState,
-          staticMenuDesktopInactive: !layoutState.staticMenuDesktopInactive,
-        },
-      });
-    } else {
-      set({
-        layoutState: {
-          ...layoutState,
-          staticMenuMobileActive: !layoutState.staticMenuMobileActive,
-        },
-      });
+      // Toggle actions
+      onMenuToggle: () => {
+        const { layoutState, isOverlay, isDesktop } = get();
+
+        if (isOverlay()) {
+          set({
+            layoutState: {
+              ...layoutState,
+              overlayMenuActive: !layoutState.overlayMenuActive,
+            },
+          });
+        } else if (isDesktop()) {
+          set({
+            layoutState: {
+              ...layoutState,
+              staticMenuDesktopInactive: !layoutState.staticMenuDesktopInactive,
+            },
+          });
+        } else {
+          set({
+            layoutState: {
+              ...layoutState,
+              staticMenuMobileActive: !layoutState.staticMenuMobileActive,
+            },
+          });
+        }
+      },
+
+      onConfigToggle: () => {
+        const { layoutState, isOverlay, isDesktop } = get();
+
+        if (isOverlay()) {
+          set({
+            layoutState: {
+              ...layoutState,
+              overlayConfigActive: !layoutState.overlayConfigActive,
+            },
+          });
+        } else if (isDesktop()) {
+          set({
+            layoutState: {
+              ...layoutState,
+              staticConfigDesktopInactive:
+                !layoutState.staticConfigDesktopInactive,
+            },
+          });
+        } else {
+          set({
+            layoutState: {
+              ...layoutState,
+              staticConfigMobileActive: !layoutState.staticConfigMobileActive,
+            },
+          });
+        }
+      },
+
+      onBottombarToggle: () => {
+        const { layoutState, isDesktop } = get();
+
+        if (isDesktop()) {
+          set({
+            layoutState: {
+              ...layoutState,
+              staticBottombarDesktopInactive:
+                !layoutState.staticBottombarDesktopInactive,
+            },
+          });
+        } else {
+          set({
+            layoutState: {
+              ...layoutState,
+              staticBottombarMobileHide: !layoutState.staticBottombarMobileHide,
+            },
+          });
+        }
+      },
+
+      onTopbarToggle: () =>
+        set((state) => ({
+          layoutState: {
+            ...state.layoutState,
+            topbarAutoHide: !state.layoutState.topbarAutoHide,
+          },
+        })),
+
+      onNavbarStickyToggle: () =>
+        set((state) => ({
+          layoutState: {
+            ...state.layoutState,
+            navbarStickyToggle: !state.layoutState.navbarStickyToggle,
+          },
+        })),
+
+      onBottombarStickyToggle: () =>
+        set((state) => ({
+          layoutState: {
+            ...state.layoutState,
+            bottombarStickyToggle: !state.layoutState.bottombarStickyToggle,
+          },
+        })),
+
+      onSidebarAutoOverlayToggle: () =>
+        set((state) => ({
+          layoutState: {
+            ...state.layoutState,
+            sidebarAutoOverlayActive:
+              !state.layoutState.sidebarAutoOverlayActive,
+          },
+        })),
+
+      showProfileSidebar: () =>
+        set((state) => ({
+          layoutState: {
+            ...state.layoutState,
+            profileSidebarVisible: !state.layoutState.profileSidebarVisible,
+          },
+        })),
+
+      // Utility functions
+      isOverlay: () => get().layoutConfig.menuMode === 'overlay',
+      isDesktop: () => {
+        if (!isClient) return true; // Default to desktop on server
+        return window.innerWidth > 991;
+      },
+    }),
+    {
+      name: 'layout-storage',
+      storage: isClient ? createJSONStorage(() => localStorage) : {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {}
+      },
+      partialize: (state) => ({
+        layoutConfig: state.layoutConfig,
+        layoutState: state.layoutState,
+        activeMenu: state.activeMenu,
+      }),
+      // Skip hydration on the server
+      skipHydration: !isClient,
+      // Only rehydrate on the client
+      onRehydrateStorage: () => (state) => {
+        if (state && isClient) {
+          // Ensure we have valid values after rehydration
+          state.layoutConfig = { ...defaultLayoutConfig, ...state.layoutConfig };
+          state.layoutState = { ...defaultLayoutState, ...state.layoutState };
+        }
+      },
     }
-  },
-
-  onConfigToggle: () => {
-    const { layoutState, isOverlay, isDesktop } = get();
-
-    if (isOverlay()) {
-      set({
-        layoutState: {
-          ...layoutState,
-          overlayConfigActive: !layoutState.overlayConfigActive,
-        },
-      });
-    } else if (isDesktop()) {
-      set({
-        layoutState: {
-          ...layoutState,
-          staticConfigDesktopInactive: !layoutState.staticConfigDesktopInactive,
-        },
-      });
-    } else {
-      set({
-        layoutState: {
-          ...layoutState,
-          staticConfigMobileActive: !layoutState.staticConfigMobileActive,
-        },
-      });
-    }
-  },
-
-  onBottombarToggle: () => {
-    const { layoutState, isOverlay, isDesktop } = get();
-
-    if (isOverlay()) {
-      set({
-        layoutState: {
-          ...layoutState,
-          overlayBottombarActive: !layoutState.overlayBottombarActive,
-        },
-      });
-    } else if (isDesktop()) {
-      set({
-        layoutState: {
-          ...layoutState,
-          staticBottombarDesktopInactive:
-            !layoutState.staticBottombarDesktopInactive,
-        },
-      });
-    } else {
-      set({
-        layoutState: {
-          ...layoutState,
-          staticBottombarMobileHide: !layoutState.staticBottombarMobileHide,
-        },
-      });
-    }
-  },
-
-  onTopbarToggle: () =>
-    set((state) => ({
-      layoutState: {
-        ...state.layoutState,
-        topbarAutoHide: !state.layoutState.topbarAutoHide,
-      },
-    })),
-
-  onNavbarStickyToggle: () =>
-    set((state) => ({
-      layoutState: {
-        ...state.layoutState,
-        navbarStickyToggle: !state.layoutState.navbarStickyToggle,
-      },
-    })),
-
-  onBottombarStickyToggle: () =>
-    set((state) => ({
-      layoutState: {
-        ...state.layoutState,
-        bottombarStickyToggle: !state.layoutState.bottombarStickyToggle,
-      },
-    })),
-
-  onSidebarAutoOverlayToggle: () =>
-    set((state) => ({
-      layoutState: {
-        ...state.layoutState,
-        sidebarAutoOverlayActive: !state.layoutState.sidebarAutoOverlayActive,
-      },
-    })),
-
-  showProfileSidebar: () =>
-    set((state) => ({
-      layoutState: {
-        ...state.layoutState,
-        profileSidebarVisible: !state.layoutState.profileSidebarVisible,
-      },
-    })),
-
-  // Utility functions
-  isOverlay: () => get().layoutConfig.menuMode === 'overlay',
-  isDesktop: () => {
-    if (typeof window === 'undefined') return false;
-    return window.innerWidth > 991;
-  },
-}));
+  )
+);
 
 // Export hooks for easier access
 export const useLayoutConfig = () =>
   useLayoutStore((state) => state.layoutConfig);
+
 export const useLayoutState = () =>
   useLayoutStore((state) => state.layoutState);
+
 export const useActiveMenu = () => useLayoutStore((state) => state.activeMenu);
+
 export const useSetLayoutConfig = () =>
   useLayoutStore((state) => state.setLayoutConfig);
+
 export const useSetLayoutState = () =>
   useLayoutStore((state) => state.setLayoutState);
+
 export const useSetActiveMenu = () =>
   useLayoutStore((state) => state.setActiveMenu);
 
-// ========== INDIVIDUAL ACTION HOOKS - For Backward Compatibility ==========
+// Action hooks
 export const useOnMenuToggle = () =>
   useLayoutStore((state) => state.onMenuToggle);
+
 export const useOnConfigToggle = () =>
   useLayoutStore((state) => state.onConfigToggle);
+
 export const useOnBottombarToggle = () =>
   useLayoutStore((state) => state.onBottombarToggle);
+
 export const useOnTopbarToggle = () =>
   useLayoutStore((state) => state.onTopbarToggle);
+
 export const useOnNavbarStickyToggle = () =>
   useLayoutStore((state) => state.onNavbarStickyToggle);
+
 export const useOnBottombarStickyToggle = () =>
   useLayoutStore((state) => state.onBottombarStickyToggle);
+
 export const useOnSidebarAutoOverlayToggle = () =>
   useLayoutStore((state) => state.onSidebarAutoOverlayToggle);
+
 export const useShowProfileSidebar = () =>
   useLayoutStore((state) => state.showProfileSidebar);
 
-// ========== GROUPED ACTION HOOKS - Reduced Bundle Size ==========
+// Grouped action hooks
 export const useLayoutActions = () =>
   useLayoutStore((state) => ({
     onMenuToggle: state.onMenuToggle,
@@ -257,37 +295,10 @@ export const useLayoutUtils = () =>
     isDesktop: state.isDesktop,
   }));
 
-
-// ========== PERFORMANCE-OPTIMIZED SELECTORS ==========
-export const useLayoutSelector = <T>(selector: (state: LayoutStore) => T) =>
-  useLayoutStore(selector);
-
-// ========== COMPUTED STATE HOOKS - Memoized ==========
-export const useIsMenuActive = () =>
-  useLayoutStore(
-    (state) =>
-      state.layoutState.overlayMenuActive ||
-      state.layoutState.staticMenuMobileActive ||
-      !state.layoutState.staticMenuDesktopInactive
-  );
-
-export const useIsConfigActive = () =>
-  useLayoutStore(
-    (state) =>
-      state.layoutState.overlayConfigActive ||
-      state.layoutState.staticConfigMobileActive ||
-      !state.layoutState.staticConfigDesktopInactive
-  );
-
-// ============================================================================
-// CACHE MANAGEMENT UTILITIES
-// ============================================================================
-
-// Clear all cached layout data
+// Cache utilities
 export const clearLayoutCache = () => {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('layout-store');
-    // Force reload the store with default values
+    useLayoutStore.persist.clearStorage();
     const store = useLayoutStore.getState();
     store.setLayoutConfig(defaultLayoutConfig);
     store.setLayoutState(defaultLayoutState);
@@ -295,7 +306,6 @@ export const clearLayoutCache = () => {
   }
 };
 
-// Export current layout state for backup
 export const exportLayoutState = () => {
   const state = useLayoutStore.getState();
   return {
@@ -306,7 +316,6 @@ export const exportLayoutState = () => {
   };
 };
 
-// Import layout state from backup
 export const importLayoutState = (backupData: {
   layoutConfig: LayoutConfig;
   layoutState: LayoutState;
@@ -319,26 +328,22 @@ export const importLayoutState = (backupData: {
   setActiveMenu(backupData.activeMenu);
 };
 
-// Check if layout cache exists
 export const hasLayoutCache = (): boolean => {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('layout-store') !== null;
+    return localStorage.getItem('layout-storage') !== null;
   }
   return false;
 };
 
-// Get cache size in bytes
 export const getLayoutCacheSize = (): number => {
   if (typeof window !== 'undefined') {
-    const cache = localStorage.getItem('layout-store');
+    const cache = localStorage.getItem('layout-storage');
     return cache ? new Blob([cache]).size : 0;
   }
   return 0;
 };
 
-// ============================================================================
-// RESPONSIVE BEHAVIOR INITIALIZATION
-// ============================================================================
+// Responsive behavior
 if (typeof window !== 'undefined') {
   const handleResize = () => {
     const { setLayoutConfig, isDesktop } = useLayoutStore.getState();

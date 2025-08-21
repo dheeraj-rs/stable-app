@@ -126,17 +126,29 @@ const LayoutContent = ({ children }: ChildContainerProps) => {
         unbindProfileMenuOutsideClickListener();
     });
 
+    // Use a consistent initial state for server-side rendering
+    const [isMounted, setIsMounted] = React.useState(false);
+    
+    // Set isMounted to true after component mounts (client-side only)
+    React.useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
+    // Use default values during SSR and first render, then use actual values
+    const isOverlayLayout = isOverlay();
+    const isStaticLayout = !isOverlayLayout;
+
     const containerClass = classNames('layout__wrapper', {
-        'layout-overlay': isOverlay(),
-        'layout-static': !isOverlay(),
-        'layout-static-sidebar-inactive': layoutState.staticMenuDesktopInactive && !isOverlay(),
-        'layout-static-config-inactive': layoutState.staticConfigDesktopInactive && !isOverlay(),
-        'layout-bottombar-desktop-inactive': layoutState.staticBottombarDesktopInactive,
-        'layout-bottombar-mobile-hide': layoutState.staticBottombarMobileHide,
-        'layout-overlay-sidebar-active': layoutState.overlayMenuActive,
-        'layout-overlay-config-active': layoutState.overlayConfigActive,
-        'layout-mobile-sidebar-active': layoutState.staticMenuMobileActive,
-        'layout-mobile-config-active': layoutState.staticConfigMobileActive,
+        'layout-overlay': isMounted && isOverlayLayout,
+        'layout-static': !isMounted || isStaticLayout,
+        'layout-static-sidebar-inactive': isMounted && layoutState.staticMenuDesktopInactive && isStaticLayout,
+        'layout-static-config-inactive': isMounted && layoutState.staticConfigDesktopInactive && isStaticLayout,
+        'layout-bottombar-desktop-inactive': isMounted && layoutState.staticBottombarDesktopInactive,
+        'layout-bottombar-mobile-hide': isMounted && layoutState.staticBottombarMobileHide,
+        'layout-overlay-sidebar-active': isMounted && layoutState.overlayMenuActive,
+        'layout-overlay-config-active': isMounted && layoutState.overlayConfigActive,
+        'layout-mobile-sidebar-active': isMounted && layoutState.staticMenuMobileActive,
+        'layout-mobile-config-active': isMounted && layoutState.staticConfigMobileActive,
         'p-input-filled': layoutConfig.inputStyle === 'filled',
         'p-ripple-disabled': !layoutConfig.ripple,
         'layout-topbar-auto-hide': layoutState.topbarAutoHide,
