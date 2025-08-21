@@ -116,10 +116,11 @@ const generateCacheRules = () => {
 };
 
 // PWA Configuration
+const isProduction = process.env.NODE_ENV === 'production';
 const withPWA = require('next-pwa')({
   dest: 'public',
-  disable: process.env.NODE_ENV === 'development', // Disable PWA in development
-  register: process.env.NODE_ENV === 'production', // Only register in production
+  disable: !isProduction,
+  register: isProduction,
   skipWaiting: true,
   runtimeCaching: generateCacheRules(),
   buildExcludes: [/middleware-manifest\.json$/],
