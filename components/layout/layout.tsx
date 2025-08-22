@@ -128,7 +128,7 @@ const LayoutContent = ({ children }: ChildContainerProps) => {
 
     // Use a consistent initial state for server-side rendering
     const [isMounted, setIsMounted] = React.useState(false);
-    
+
     // Set isMounted to true after component mounts (client-side only)
     React.useEffect(() => {
         setIsMounted(true);

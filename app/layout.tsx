@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-// import { MainLayout } from '@/components/layout/main-layout';
+import { MainLayout } from '@/components/layout/main-layout';
 import { generateMetadata } from '@/lib/metadata';
 import AppProviders from '@/components/providers/AppProviders';
-import '@/styles/layout/layout.scss';
-import '@/styles/components/index.scss';
+// import '@/styles/layout/layout.scss';
+// import '@/styles/components/index.scss';
 import './globals.css'
 
 const inter = Inter({
@@ -49,11 +49,11 @@ export default function RootLayout({
         />
       </head>
       <body className={inter.className} suppressHydrationWarning>
-        {/* <MainLayout> */}
         <AppProviders>
-          {children}
+          <MainLayout>
+            {children}
+          </MainLayout>
         </AppProviders>
-        {/* </MainLayout> */}
       </body>
     </html>
   );

@@ -205,11 +205,13 @@ export const useLayoutStore = create<LayoutStore>()(
     }),
     {
       name: 'layout-storage',
-      storage: isClient ? createJSONStorage(() => localStorage) : {
-        getItem: () => null,
-        setItem: () => {},
-        removeItem: () => {}
-      },
+      storage: isClient
+        ? createJSONStorage(() => localStorage)
+        : {
+            getItem: () => null,
+            setItem: () => {},
+            removeItem: () => {},
+          },
       partialize: (state) => ({
         layoutConfig: state.layoutConfig,
         layoutState: state.layoutState,
@@ -221,7 +223,10 @@ export const useLayoutStore = create<LayoutStore>()(
       onRehydrateStorage: () => (state) => {
         if (state && isClient) {
           // Ensure we have valid values after rehydration
-          state.layoutConfig = { ...defaultLayoutConfig, ...state.layoutConfig };
+          state.layoutConfig = {
+            ...defaultLayoutConfig,
+            ...state.layoutConfig,
+          };
           state.layoutState = { ...defaultLayoutState, ...state.layoutState };
         }
       },
